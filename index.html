@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GenAI Plinko: How AI Generates Text</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #87ceeb 0%, #4a90e2 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        canvas {
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 15px;
+            background: linear-gradient(to bottom, #1e3c72 0%, #2a5298 50%, #1e3c72 100%);
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.2);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255,255,255,0.1);
+            padding: 10px 20px;
+            border-radius: 25px;
+        }
+        
+        label {
+            font-weight: bold;
+        }
+        
+        input[type="range"] {
+            width: 150px;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.2);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+        
+        select {
+            padding: 8px 15px;
+            border-radius: 10px;
+            border: none;
+            background: rgba(255,255,255,0.9);
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+        }
+        
+        button {
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            border: none;
+            color: white;
+            padding: 12px 25px;
+            font-size: 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+        
+        .explanation {
+            background: rgba(255,255,255,0.1);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: left;
+            backdrop-filter: blur(10px);
+            line-height: 1.6;
+        }
+        
+        .explanation h3 {
+            color: #ffd700;
+            margin-top: 0;
+        }
+        
+        .analogy-point {
+            margin: 15px 0;
+            padding-left: 20px;
+            position: relative;
+        }
+        
+        .analogy-point::before {
+            content: "⚡";
+            position: absolute;
+            left: 0;
+            top: 0;
+        }
+        
+        .temperature-display {
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #ffd700;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎯 GenAI Plinko</h1>
+        <p class="subtitle">Watch how AI generates text through probability and randomness</p>
+        
+        <div class="game-container">
+            <canvas id="plinkoCanvas" width="800" height="600"></canvas>
+            
+            <div class="controls">
+                <div class="control-group">
+                    <label for="temperature">🌡️ Temperature:</label>
+                    <input type="range" id="temperature" min="0.1" max="2" step="0.1" value="1">
+                    <span class="temperature-display" id="tempDisplay">1.0</span>
+                </div>
+                <div class="control-group">
+                    <label for="promptType">📝 Prompt Type:</label>
+                    <select id="promptType">
+                        <option value="basic">Basic Prompt</option>
+                        <option value="detailed">Detailed Prompt (Context + Role)</option>
+                    </select>
+                </div>
+                <button onclick="dropPuck()">Drop Prompt 🚀</button>
+                <button onclick="dropMultiple()">Drop 5 Prompts</button>
+                <button onclick="clearBoard()">Clear Board</button>
+            </div>
+        </div>
+        
+        <div class="explanation">
+            <h3>🧠 How This Relates to AI Text Generation</h3>
+            
+            <div class="analogy-point">
+                <strong>The Puck = Your Prompt:</strong> Just like dropping a puck starts the Plinko game, your prompt starts the AI's text generation process.
+            </div>
+            
+            <div class="analogy-point">
+                <strong>The Pegs = Decision Points:</strong> Each peg represents a moment where the AI chooses the next word. At every peg, the AI considers all possible words and picks one based on probability.
+            </div>
+            
+            <div class="analogy-point">
+                <strong>Temperature = Randomness:</strong> Low temperature (0.1) makes the AI very predictable - like a puck that barely bounces. High temperature (2.0) makes it very creative and unpredictable - like a super bouncy puck!
+            </div>
+            
+            <div class="analogy-point">
+                <strong>Prompt Type = Guidance:</strong> Basic prompts are vague and lead to scattered results. Detailed prompts with context and role information guide the AI toward more focused, useful responses - like adding bumpers to guide the puck!
+            </div>
+            
+            <div class="analogy-point">
+                <strong>Multiple Drops = Multiple Responses:</strong> Even with the same prompt, AI can generate different responses each time, just like how pucks can take different paths down the board.
+            </div>
+            
+            <div class="analogy-point">
+                <strong>The Slots = Final Response:</strong> Where the puck lands represents the final text the AI generates - one of many possible outcomes from the same starting point.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('plinkoCanvas');
+        const ctx = canvas.getContext('2d');
+        const tempSlider = document.getElementById('temperature');
+        const tempDisplay = document.getElementById('tempDisplay');
+        const promptSelector = document.getElementById('promptType');
+        
+        let temperature = 1.0;
+        let promptType = 'basic';
+        let pucks = [];
+        let pegs = [];
+        let slots = [];
+        let animationId;
+        
+        // Initialize pegs in a triangular pattern
+        function initializePegs() {
+            pegs = [];
+            const rows = 12;
+            const startY = 120;
+            const rowSpacing = 40;
+            
+            for (let row = 0; row < rows; row++) {
+                const pegsInRow = row + 3;
+                const startX = (canvas.width - (pegsInRow - 1) * 60) / 2;
+                
+                for (let col = 0; col < pegsInRow; col++) {
+                    pegs.push({
+                        x: startX + col * 60,
+                        y: startY + row * rowSpacing,
+                        radius: 6
+                    });
+                }
+            }
+        }
+        
+        // Initialize collection slots at the bottom
+        function initializeSlots() {
+            slots = [];
+            const numSlots = 15;
+            const slotWidth = canvas.width / numSlots;
+            
+            for (let i = 0; i < numSlots; i++) {
+                slots.push({
+                    x: i * slotWidth,
+                    y: canvas.height - 50,
+                    width: slotWidth,
+                    height: 50,
+                    count: 0,
+                    color: `hsl(${i * 25}, 70%, 60%)`
+                });
+            }
+        }
+        
+        // Puck class
+        class Puck {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radius = 8;
+                this.color = `hsl(${Math.random() * 360}, 80%, 60%)`;
+                this.trail = [];
+                this.active = true;
+                this.gravity = 0.3;
+                this.bounce = 0.6;
+                this.promptType = promptType;
+            }
+            
+            update() {
+                if (!this.active) return;
+                
+                // Apply gravity
+                this.vy += this.gravity;
+                
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+                
+                // Add to trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 15) {
+                    this.trail.shift();
+                }
+                
+                // Check collision with pegs
+                for (let peg of pegs) {
+                    const dx = this.x - peg.x;
+                    const dy = this.y - peg.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < this.radius + peg.radius) {
+                        // Calculate bounce direction with temperature influence
+                        const angle = Math.atan2(dy, dx);
+                        let randomFactor = (Math.random() - 0.5) * temperature * 0.5;
+                        
+                        // Detailed prompts have bias toward center (more focused outcomes)
+                        if (this.promptType === 'detailed') {
+                            const centerX = canvas.width / 2;
+                            const biasTowardCenter = (centerX - this.x) * 0.001;
+                            randomFactor += biasTowardCenter;
+                            randomFactor *= 0.7; // Less randomness for detailed prompts
+                        }
+                        
+                        const bounceAngle = angle + randomFactor;
+                        
+                        const speed = Math.sqrt(this.vx * this.vx + this.vy * this.vy) * this.bounce;
+                        this.vx = Math.cos(bounceAngle) * speed;
+                        this.vy = Math.sin(bounceAngle) * speed;
+                        
+                        // Push puck away from peg
+                        this.x = peg.x + Math.cos(bounceAngle) * (this.radius + peg.radius + 1);
+                        this.y = peg.y + Math.sin(bounceAngle) * (this.radius + peg.radius + 1);
+                        
+                        // Visual effect
+                        peg.hit = 10;
+                    }
+                }
+                
+                // Check if reached bottom
+                if (this.y > canvas.height - 60) {
+                    // Find which slot it landed in
+                    const slotIndex = Math.floor(this.x / (canvas.width / slots.length));
+                    if (slotIndex >= 0 && slotIndex < slots.length) {
+                        slots[slotIndex].count++;
+                    }
+                    this.active = false;
+                }
+                
+                // Keep puck on screen horizontally
+                if (this.x < this.radius) {
+                    this.x = this.radius;
+                    this.vx = Math.abs(this.vx);
+                }
+                if (this.x > canvas.width - this.radius) {
+                    this.x = canvas.width - this.radius;
+                    this.vx = -Math.abs(this.vx);
+                }
+            }
+            
+            draw() {
+                // Draw trail
+                ctx.strokeStyle = this.color + '40';
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                for (let i = 0; i < this.trail.length - 1; i++) {
+                    const alpha = i / this.trail.length;
+                    ctx.globalAlpha = alpha * 0.5;
+                    if (i === 0) {
+                        ctx.moveTo(this.trail[i].x, this.trail[i].y);
+                    } else {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                }
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                
+                // Draw puck with different visual for prompt type
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Different border styles for different prompt types
+                if (this.promptType === 'detailed') {
+                    ctx.strokeStyle = 'gold';
+                    ctx.lineWidth = 3;
+                } else {
+                    ctx.strokeStyle = 'white';
+                    ctx.lineWidth = 2;
+                }
+                ctx.stroke();
+            }
+        }
+        
+        function drawPegs() {
+            for (let peg of pegs) {
+                ctx.beginPath();
+                ctx.arc(peg.x, peg.y, peg.radius, 0, Math.PI * 2);
+                
+                if (peg.hit > 0) {
+                    ctx.fillStyle = `rgba(255, 255, 100, ${peg.hit / 10})`;
+                    ctx.strokeStyle = 'yellow';
+                    peg.hit--;
+                } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+                }
+                
+                ctx.fill();
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+        
+        function drawSlots() {
+            for (let i = 0; i < slots.length; i++) {
+                const slot = slots[i];
+                
+                // Draw slot
+                ctx.fillStyle = slot.color;
+                ctx.fillRect(slot.x, slot.y, slot.width, slot.height);
+                
+                // Draw slot borders
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(slot.x, slot.y, slot.width, slot.height);
+                
+                // Draw count
+                if (slot.count > 0) {
+                    ctx.fillStyle = 'white';
+                    ctx.font = 'bold 14px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(slot.count, slot.x + slot.width / 2, slot.y + 30);
+                }
+            }
+            
+            // Draw slot labels
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('Different Possible AI Responses', canvas.width / 2, canvas.height - 10);
+        }
+        
+        function drawTitle() {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.font = 'bold 16px Arial';
+            ctx.textAlign = 'center';
+            
+            if (promptType === 'basic') {
+                ctx.fillText('Basic Prompt: "Write something"', canvas.width / 2, 25);
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fillText('(Vague → Wide range of possible responses)', canvas.width / 2, 45);
+            } else {
+                ctx.fillText('Detailed Prompt: "As a teacher, write a lesson plan..."', canvas.width / 2, 25);
+                ctx.font = '12px Arial';
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+                ctx.fillText('(Specific context + role → More focused responses)', canvas.width / 2, 45);
+            }
+            
+            // Draw arrow
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 55);
+            ctx.lineTo(canvas.width / 2, 95);
+            ctx.moveTo(canvas.width / 2 - 5, 90);
+            ctx.lineTo(canvas.width / 2, 95);
+            ctx.lineTo(canvas.width / 2 + 5, 90);
+            ctx.stroke();
+        }
+        
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            drawTitle();
+            drawPegs();
+            drawSlots();
+            
+            // Update and draw pucks
+            for (let puck of pucks) {
+                if (puck.active) {
+                    puck.update();
+                    puck.draw();
+                }
+            }
+            
+            // Remove inactive pucks after a delay
+            pucks = pucks.filter(puck => puck.active || puck.y < canvas.height + 100);
+            
+            requestAnimationFrame(animate);
+        }
+        
+        function dropPuck() {
+            let startX;
+            if (promptType === 'basic') {
+                // Basic prompts start with more variation
+                startX = canvas.width / 2 + (Math.random() - 0.5) * 40;
+            } else {
+                // Detailed prompts start more centered (more focused)
+                startX = canvas.width / 2 + (Math.random() - 0.5) * 8; // Much tighter starting spread
+            }
+            const puck = new Puck(startX, 105);
+            pucks.push(puck);
+        }
+        
+        function dropMultiple() {
+            for (let i = 0; i < 5; i++) {
+                setTimeout(() => dropPuck(), i * 200);
+            }
+        }
+        
+        function clearBoard() {
+            pucks = [];
+            for (let slot of slots) {
+                slot.count = 0;
+            }
+        }
+        
+        // Update temperature
+        tempSlider.addEventListener('input', function() {
+            temperature = parseFloat(this.value);
+            tempDisplay.textContent = temperature.toFixed(1);
+        });
+        
+        // Update prompt type
+        promptSelector.addEventListener('change', function() {
+            promptType = this.value;
+        });
+        
+        // Initialize
+        initializePegs();
+        initializeSlots();
+        animate();
+    </script>
+</body>
+</html>
